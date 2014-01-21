@@ -35,8 +35,7 @@ abstract class Gradient extends Serializable {
    *         gradient and the second element is the loss computed at this data point.
    *
    */
-  def compute(data: DoubleMatrix, label: Double, weights: DoubleMatrix): 
-      (DoubleMatrix, Double)
+  def compute(data: DoubleMatrix, label: Double, weights: DoubleMatrix):(DoubleMatrix, Double)
 }
 
 /**
@@ -94,5 +93,53 @@ class HingeGradient extends Gradient {
     } else {
       (DoubleMatrix.zeros(1, weights.length), 0.0)
     }
+  }
+}
+
+/**
+ * Compute gradient and loss for a multinomial logistic regression loss function.
+ * NOTE: This assumes that the labels are {0, 1, 2, ..., N - 1} for N classes
+ * classification problem
+ */
+class MultiLogisticGradient extends Gradient {
+  override def compute(data: DoubleMatrix, label: Double, weights: DoubleMatrix):
+      (DoubleMatrix, Double) = {
+    def alpha(i: Int): Int = if (i == 0) 1 else 0
+    def delta(i: Int, j: Int): Int = if (i == j) 1 else 0
+
+    val y = Math.round(label).toInt
+    val gradient = new DoubleMatrix(weights.rows, 1)
+
+    // Note: data.rows contains intercept.
+    val classes: Int = (weights.rows / data.rows) + 1
+
+    var denominator: Double = 1.0
+    val numerators: Array[Double] = Array.ofDim[Double](classes - 1)
+
+    var i:Int = 0; var j:Int = 0
+
+    while(i < classes - 1) {
+      j = 0
+      var acc:Double = 0
+      while(j < data.rows) {
+        acc += data.get(j, 0) * weights.get(i * data.rows + j, 0)
+        j += 1
+      }
+      numerators(i) = math.exp(acc)
+      denominator += numerators(i)
+      i += 1
+    }
+
+    i = 0
+    while (i < weights.length) {
+      val m: Int = i % data.rows
+      val c: Int = (i - m) / data.rows
+      gradient.put(i, 0, gradient.get(i,0) - ((1 - alpha(y)) * delta(y, c + 1) - numerators(c) / denominator) * data.get(m, 0))
+      i += 1
+    }
+
+    val loss: Double = - math.log((if(y == 0) 1.0 else numerators(y - 1)) / denominator)
+
+    (gradient, loss)
   }
 }

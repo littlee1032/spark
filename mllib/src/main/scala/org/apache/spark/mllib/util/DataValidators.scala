@@ -34,9 +34,25 @@ object DataValidators extends Logging {
    * @return True if labels are all zero or one, false otherwise.
    */
    val classificationLabels: RDD[LabeledPoint] => Boolean = { data =>
-    val numInvalid = data.filter(x => x.label != 1.0 && x.label != 0.0).count()
+    val numInvalid = data.filter(x => Math.round(x.label) < 0 || Math.round(x.label) > 1).count()
     if (numInvalid != 0) {
       logError("Classification labels should be 0 or 1. Found " + numInvalid + " invalid labels")
+    }
+    numInvalid == 0
+  }
+
+  /**
+   * Function to check if labels used for multinomial classification are
+   * in Range(0, ..., K-1) for K classes classification.
+   *
+   * @param data - input data set that needs to be checked
+   *
+   * @return True if labels are all zero or one, false otherwise.
+   */
+  val multiClassificationLabels: Int => RDD[LabeledPoint] => Boolean = { classes => data =>
+    val numInvalid = data.filter(x => Math.round(x.label) < 0 || Math.round(x.label) > (classes - 1)).count()
+    if (numInvalid != 0) {
+      logError("Classification labels should be in Range(0, ..., " + (classes - 1) + "). Found " + numInvalid + " invalid labels")
     }
     numInvalid == 0
   }

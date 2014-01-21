@@ -17,9 +17,8 @@
 
 package org.apache.spark.mllib.optimization
 
-import org.apache.spark.{Logging, SparkContext}
+import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.SparkContext._
 
 import org.jblas.DoubleMatrix
 
