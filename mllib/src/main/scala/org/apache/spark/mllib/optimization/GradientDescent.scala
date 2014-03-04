@@ -160,11 +160,35 @@ object GradientDescent extends Logging {
     for (i <- 1 to numIterations) {
       // Sample a subset (fraction miniBatchFraction) of the total data
       // compute and sum up the subgradients on this subset (this is one map-reduce)
-      val (gradientSum, lossSum) = data.sample(false, miniBatchFraction, 42 + i).map {
-        case (y, features) =>
-          val featuresCol = new DoubleMatrix(features.length, 1, features:_*)
-          val (grad, loss) = gradient.compute(featuresCol, y, weights)
-          (grad, loss)
+      val (gradientSum, lossSum) = data.sample(false, miniBatchFraction, 42 + i).mapPartitions {
+        xIterator => {
+          var lossPartitionSum = 0.0
+          var gradientPartitionSum = None : Option[DoubleMatrix]
+          var featuresVector = None : Option[DoubleMatrix]
+
+          for(x <- xIterator) {
+            x match {
+              case (y, features) => {
+                featuresVector.getOrElse {
+                  // Initialize for the first access, and assign it to featuresVector.
+                  featuresVector = Some(new DoubleMatrix(features.length, 1))
+                  featuresVector.get
+                }.data = features
+
+                val (grad, loss) = gradient.compute(featuresVector.get, y, weights)
+
+                lossPartitionSum += loss
+
+                gradientPartitionSum.getOrElse {
+                  // Initialize for the first access, and assign it to gradientPartitionSum.
+                  gradientPartitionSum = Some(new DoubleMatrix(features.length, 1))
+                  gradientPartitionSum.get
+                }.addi(grad)
+              }
+            }
+          }
+          Iterator((gradientPartitionSum.get, lossPartitionSum))
+        }
       }.reduce((a, b) => (a._1.addi(b._1), a._2 + b._2))
 
       /**
