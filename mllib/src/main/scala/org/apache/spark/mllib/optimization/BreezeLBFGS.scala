@@ -24,7 +24,7 @@ import org.jblas.DoubleMatrix
 import scala.util.control.Breaks._
 import scala.Array
 import breeze.linalg.{DenseMatrix, norm, DenseVector}
-import breeze.optimize.DiffFunction
+import breeze.optimize.{CachedDiffFunction, DiffFunction}
 
 /**
  * Class used to solve an optimization problem using Limited-memory BFGS.
@@ -233,9 +233,10 @@ object BreezeLBFGS extends Logging {
       }
     }
 
-    val lbfgs = new breeze.optimize.LBFGS[DenseVector[Double]](maxIter = maxNumIterations, m = numCorrections, tolerance = convTolerance)
+    val lbfgs = new breeze.optimize.LBFGS[DenseVector[Double]](
+      maxIter = maxNumIterations, m = numCorrections, tolerance = convTolerance)
 
-    val weights = lbfgs.minimize(costFun, DenseVector(initialWeights.clone()))
+    val weights = lbfgs.minimize(new CachedDiffFunction(costFun), DenseVector(initialWeights.clone()))
 
     println("LBFGS finished with %s iterations.".format(i.toString))
 
