@@ -45,6 +45,12 @@ class KMeansModel private[mllib] (val clusterCenters: Array[Vector]) extends Ser
   def predict(points: JavaRDD[Vector]): JavaRDD[java.lang.Integer] =
     predict(points.rdd).toJavaRDD().asInstanceOf[JavaRDD[java.lang.Integer]]
 
+  val ccWithNorm: Array[VectorWithNorm] = clusterCenters.map(new VectorWithNorm(_))
+
+  def predict2(point: Vector): (Int, Double) = {
+    KMeans.findClosest(ccWithNorm, new VectorWithNorm(point))
+  }
+
   /**
    * Return the K-means cost (sum of squared distances of points to their nearest center) for this
    * model on the given data.
